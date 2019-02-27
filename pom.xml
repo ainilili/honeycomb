@@ -1,8 +1,61 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.smallnico</groupId>
-  <artifactId>honeycomb</artifactId>
-  <version>1.1.0</version>
-  <name>honeycomb</name>
-  <description>A database connection pool that no one dares to use</description>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.smallnico</groupId>
+	<artifactId>honeycomb</artifactId>
+	<version>1.1.0</version>
+	<name>honeycomb</name>
+	<description>A database connection pool that no one dares to use</description>
+
+	<properties>
+		<java.version.source>1.8</java.version.source>
+		<java.version.target>1.8</java.version.target>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<java.compiler.argument />
+		<java.test.compiler.argument>${java.compiler.argument}</java.test.compiler.argument>
+	</properties>
+
+	<dependencies>
+		<!-- mysql connector -->
+		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>8.0.13</version>
+		</dependency>
+		
+		<!-- junit -->
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.11</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.1</version>
+					<configuration>
+						<source>${java.version.source}</source>
+						<target>${java.version.target}</target>
+						<compilerArgument>${java.compiler.argument}</compilerArgument>
+						<testSource>${java.specification.version}</testSource>
+						<testTarget>${java.specification.version}</testTarget>
+						<testCompilerArgument>${java.test.compiler.argument}</testCompilerArgument>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
 </project>
