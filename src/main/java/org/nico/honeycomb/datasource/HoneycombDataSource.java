@@ -3,6 +3,7 @@ package org.nico.honeycomb.datasource;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -22,13 +23,15 @@ public class HoneycombDataSource extends HoneycombDataSourceWrapper implements D
     
     private String driver;
     
-    private int init;
+    private int initalPoolSize;
     
-    private int max;
+    private int maxPoolSize;
     
-    private int min;
+    private int minPoolSize;
     
-    private long waitTime;
+    private long maxWaitTime;
+    
+    private long maxIdleTime;
     
     private HoneycombConnectionPool pool;
     
@@ -56,13 +59,13 @@ public class HoneycombDataSource extends HoneycombDataSourceWrapper implements D
         }
         
         HoneycombConnection cn = null;
-        
+        Integer index = null;
         if(pool.hasLeisure()) {
-            cn = pool.getConnection(waitTime);
-        }else if(! pool.isFull()) {
-            cn = pool.addUsedConnection(createNativeConnection(pool));
+            cn = pool.getConnection(maxWaitTime);
+        }else if((index =  pool.applyIndex()) != null) {
+            cn = pool.addUsedConnection(createNativeConnection(pool), index);
         }else {
-            cn = pool.getConnection(waitTime);
+            cn = pool.getConnection(maxWaitTime);
         }
         
         if(cn.isClosed()) {
@@ -84,9 +87,13 @@ public class HoneycombDataSource extends HoneycombDataSourceWrapper implements D
         
         Class.forName(driver);
         
-        pool = new HoneycombConnectionPool(max);
+        pool = new HoneycombConnectionPool(maxPoolSize);
         
-        for(int i = 0; i < init; i ++) {
+        if(initalPoolSize > maxPoolSize) {
+            initalPoolSize = maxPoolSize;
+        }
+        
+        for(int i = 0; i < initalPoolSize; i ++) {
             pool.addUnUsedConnection(createNativeConnection(pool));
         }
         inited = true;
@@ -137,36 +144,44 @@ public class HoneycombDataSource extends HoneycombDataSourceWrapper implements D
         this.driver = driver;
     }
 
-    public int getMax() {
-        return max;
+    public int getInitalPoolSize() {
+        return initalPoolSize;
     }
 
-    public void setMax(int max) {
-        this.max = max;
+    public void setInitalPoolSize(int initalPoolSize) {
+        this.initalPoolSize = initalPoolSize;
     }
 
-    public int getMin() {
-        return min;
+    public int getMaxPoolSize() {
+        return maxPoolSize;
     }
 
-    public void setMin(int min) {
-        this.min = min;
+    public void setMaxPoolSize(int maxPoolSize) {
+        this.maxPoolSize = maxPoolSize;
     }
 
-    public long getWaitTime() {
-        return waitTime;
+    public int getMinPoolSize() {
+        return minPoolSize;
     }
 
-    public void setWaitTime(long waitTime) {
-        this.waitTime = waitTime;
+    public void setMinPoolSize(int minPoolSize) {
+        this.minPoolSize = minPoolSize;
     }
 
-    public int getInit() {
-        return init;
+    public long getMaxWaitTime() {
+        return maxWaitTime;
     }
 
-    public void setInit(int init) {
-        this.init = init;
+    public void setMaxWaitTime(long maxWaitTime) {
+        this.maxWaitTime = maxWaitTime;
+    }
+
+    public long getMaxIdleTime() {
+        return maxIdleTime;
+    }
+
+    public void setMaxIdleTime(long maxIdleTime) {
+        this.maxIdleTime = maxIdleTime;
     }
 
 }
