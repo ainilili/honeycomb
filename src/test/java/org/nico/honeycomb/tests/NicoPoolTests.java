@@ -14,6 +14,8 @@ import org.junit.Test;
 import org.nico.honeycomb.connection.HoneycombConnection;
 import org.nico.honeycomb.datasource.HoneycombDataSource;
 
+import com.mysql.cj.jdbc.MysqlDataSource;
+
 public class NicoPoolTests {
 
     static ThreadPoolExecutor tpe = new ThreadPoolExecutor(1000, 1000, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
@@ -26,12 +28,24 @@ public class NicoPoolTests {
         dataSource.setUsername("root");
         dataSource.setPassword("root");
         dataSource.setDriver("com.mysql.cj.jdbc.Driver");
-        dataSource.setMaxPoolSize(170);
-        dataSource.setInitalPoolSize(50);
+        dataSource.setMaxPoolSize(200);
+        dataSource.setInitialPoolSize(100);
         dataSource.setMaxWaitTime(Long.MAX_VALUE);
         dataSource.setMinPoolSize(100);
         
-        test(dataSource, 100000);
+        test(dataSource, 10000);
+        System.out.println(System.currentTimeMillis() - start + " ms");
+    }
+    
+    @Test
+    public void testMysqlDataSource() throws SQLException, InterruptedException, ClassNotFoundException{
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        long start = System.currentTimeMillis();
+        MysqlDataSource dataSource = new MysqlDataSource();
+        dataSource.setUrl("jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8&useSSL=false&transformedBitIsBoolean=true&zeroDateTimeBehavior=CONVERT_TO_NULL&serverTimezone=Asia/Shanghai");
+        dataSource.setUser("root");
+        dataSource.setPassword("root");
+        test(dataSource, 10000);
         System.out.println(System.currentTimeMillis() - start + " ms");
     }
     
@@ -45,7 +59,7 @@ public class NicoPoolTests {
                     Statement s = connection.createStatement();
                     ResultSet rs = s.executeQuery("select * from test limit 0,1");
                     rs.next();
-//                    System.out.println("连接ID " + connection.getIndex());
+                    System.out.println("连接ID " + connection.getIndex());
                     connection.close();
                 }catch(Exception e) {
                 }finally {
