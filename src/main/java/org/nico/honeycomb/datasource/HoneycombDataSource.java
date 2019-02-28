@@ -46,8 +46,6 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
     
     static final long serialVersionUID = 616240872756692735L;
 
-    
-    
     @Override
     public Connection getConnection() throws SQLException {
         try {
@@ -61,13 +59,13 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
         if(pool.assignable()) {
             cn = pool.getConnection(maxWaitTime);
         }else if((index =  pool.applyIndex()) != null) {
-            cn = pool.putUsedConnection(createNativeConnection(pool), index);
+            cn = pool.putOccupiedConnection(createNativeConnection(pool), index);
         }else {
             cn = pool.getConnection(maxWaitTime);
         }
 
         if(cn.isClosed()) {
-            return pool.putUsedConnection(createNativeConnection(pool), cn.getIndex());
+            return pool.putOccupiedConnection(createNativeConnection(pool), cn.getIndex());
         }
         return cn;
     }
@@ -93,15 +91,14 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
         super.setPassword(password);
 
         pool = new HoneycombConnectionPool(maxPoolSize);
+        pool.enableCleaner();
 
-        if(initialPoolSize > maxPoolSize) {
-            initialPoolSize = maxPoolSize;
-        }
+        if(initialPoolSize > maxPoolSize) initialPoolSize = maxPoolSize;
 
         Integer index = null;
         for(int i = 0; i < initialPoolSize; i ++) {
             if((index =  pool.applyIndex()) != null) {
-                pool.putUnUsedConnection(createNativeConnection(pool), index);
+                pool.putLeisureConnection(createNativeConnection(pool), index);
             }
         }
         

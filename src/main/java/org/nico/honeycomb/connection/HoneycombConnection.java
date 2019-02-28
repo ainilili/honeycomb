@@ -5,6 +5,7 @@ import java.sql.SQLException;
 
 import org.nico.honeycomb.connection.pool.HoneycombConnectionPool;
 import org.nico.honeycomb.consts.ConnectionStatus;
+import org.nico.honeycomb.utils.TimeUtils;
 import org.nico.honeycomb.utils.UnsafeUtils;
 
 import sun.misc.Unsafe;
@@ -15,6 +16,12 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
     private Integer index;
     
     private HoneycombConnectionPool pool;
+
+    private long idleStartTime;
+    
+    private long usageTime;
+    
+    private long usageCount;
     
     private volatile ConnectionStatus status;
     
@@ -24,6 +31,7 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
     
     private HoneycombConnection(Connection connection) {
         super(connection);
+        this.usageTime = TimeUtils.getRealTime();
     }
     
     public HoneycombConnection(Connection connection, HoneycombConnectionPool pool) {
@@ -38,44 +46,52 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
 
     @Override
     public void close() {
-        if(switchLeisure()) {
+        if(switchIdle()) {
             pool.recycle(this);   
         }
     }
 
     @Override
     public boolean isClosed() throws SQLException {
-        return status == ConnectionStatus.LEISURE || status == ConnectionStatus.RECYCLED;
+        return status == ConnectionStatus.IDLE || connection.isClosed();
     }
 
     @Override
-    public boolean switchLeisure() {
-        return unsafe.compareAndSwapObject(this, statusOffset, status, ConnectionStatus.LEISURE);
-    }
-
-    @Override
-    public boolean switchRecycled() {
-        return unsafe.compareAndSwapObject(this, statusOffset, status, ConnectionStatus.RECYCLED);
+    public boolean switchIdle() {
+        return unsafe.compareAndSwapObject(this, statusOffset, status, ConnectionStatus.IDLE) && flushIdleStartTime();
     }
 
     @Override
     public boolean switchOccupied() {
-        return unsafe.compareAndSwapObject(this, statusOffset, status, ConnectionStatus.OCCUPIED);
+        return unsafe.compareAndSwapObject(this, statusOffset, status, ConnectionStatus.OCCUPIED) && flushUsageCount();
     }
 
     @Override
-    public boolean leisured() {
-        return status == ConnectionStatus.LEISURE;
-    }
-
-    @Override
-    public boolean recycled() {
-        return status == ConnectionStatus.RECYCLED;
+    public boolean idle() {
+        return status == ConnectionStatus.IDLE;
     }
 
     @Override
     public boolean occupied() {
         return status == ConnectionStatus.OCCUPIED;
+    }
+    
+    public boolean flushIdleStartTime() {
+        idleStartTime = TimeUtils.getRealTime();
+        return true;
+    }
+    
+    public boolean flushUsageCount() {
+        usageCount += 1;
+        return true;
+    }
+
+    public long getIdleStartTime() {
+        return idleStartTime;
+    }
+
+    public void setIdleStartTime(long idleStartTime) {
+        this.idleStartTime = idleStartTime;
     }
 
     public Integer getIndex() {
@@ -84,6 +100,47 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
 
     public void setIndex(Integer index) {
         this.index = index;
+    }
+
+    public long getUsageTime() {
+        return usageTime;
+    }
+
+    public void setUsageTime(long usageTime) {
+        this.usageTime = usageTime;
+    }
+
+    public long getUsageCount() {
+        return usageCount;
+    }
+
+    public void setUsageCount(long usageCount) {
+        this.usageCount = usageCount;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((index == null) ? 0 : index.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        HoneycombConnection other = (HoneycombConnection) obj;
+        if (index == null) {
+            if (other.index != null)
+                return false;
+        } else if (!index.equals(other.index))
+            return false;
+        return true;
     }
 
 }

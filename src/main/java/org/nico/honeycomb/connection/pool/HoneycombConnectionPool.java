@@ -1,13 +1,15 @@
 package org.nico.honeycomb.connection.pool;
 
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.nico.honeycomb.connection.HoneycombConnection;
+import org.nico.honeycomb.connection.pool.feature.HoneycombConnectionPoolCleaner;
 
 
-public class HoneycombConnectionPool{
+public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     private int maxPoolSize;
 
@@ -15,12 +17,15 @@ public class HoneycombConnectionPool{
 
     private AtomicInteger poolIndex;
 
-    private LinkedBlockingQueue<Integer> idleQueue;
+    private ArrayBlockingQueue<HoneycombConnection> idleQueue;
+    
+    private Thread cleaner;
 
     public HoneycombConnectionPool(int maxPoolSize) {
         pools = new HoneycombConnection[this.maxPoolSize = maxPoolSize];
-        idleQueue = new LinkedBlockingQueue<Integer>();
+        idleQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
         poolIndex = new AtomicInteger(-1);
+        cleaner = new HoneycombConnectionPoolCleaner(this);
     }
 
     public Integer applyIndex() {
@@ -41,11 +46,10 @@ public class HoneycombConnectionPool{
         try {
             while(wait > 0) {
                 long beginPollNanoTime = System.nanoTime();
-                Integer index = idleQueue.poll(wait, TimeUnit.MILLISECONDS);
-                if(index != null) {
-                    HoneycombConnection nc = pools[index];
+                HoneycombConnection nc = idleQueue.poll(wait, TimeUnit.MILLISECONDS);
+                if(nc != null) {
                     if(nc.isClosed() && nc.switchOccupied()) {
-                        idleQueue.remove(nc.getIndex());
+                        idleQueue.remove(nc);
                         return nc;
                     }
                 }
@@ -59,24 +63,24 @@ public class HoneycombConnectionPool{
         throw new RuntimeException("获取连接超时");
     }
 
-    public HoneycombConnection putUsedConnection(HoneycombConnection nc, Integer id) {
+    public HoneycombConnection putOccupiedConnection(HoneycombConnection nc, Integer id) {
         nc.switchOccupied();
         nc.setIndex(id);
         pools[id] = nc;
-        idleQueue.remove(id);
+        idleQueue.remove(nc);
         return nc;
     }
 
-    public HoneycombConnection putUnUsedConnection(HoneycombConnection nc, Integer id) {
-        nc.switchLeisure();
+    public HoneycombConnection putLeisureConnection(HoneycombConnection nc, Integer id) {
+        nc.switchIdle();
         nc.setIndex(id);
         pools[id] = nc;
-        idleQueue.add(id);
+        idleQueue.add(nc);
         return nc;
     }
 
     public void recycle(HoneycombConnection nc) {
-        idleQueue.add(nc.getIndex());
+        idleQueue.add(nc);
     }
 
     public HoneycombConnection[] getPools() {
@@ -94,6 +98,45 @@ public class HoneycombConnectionPool{
     public void setPoolIndex(AtomicInteger poolIndex) {
         this.poolIndex = poolIndex;
     }
+    
+    @Override
+    public void enableCleaner() {
+        cleaner.start();
+    }
 
 
+    @Override
+    public void enableMonitor() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void enableLRU() {
+        
+    }
+
+    public int getMaxPoolSize() {
+        return maxPoolSize;
+    }
+
+    public void setMaxPoolSize(int maxPoolSize) {
+        this.maxPoolSize = maxPoolSize;
+    }
+
+    public ArrayBlockingQueue<HoneycombConnection> getIdleQueue() {
+        return idleQueue;
+    }
+
+    public void setIdleQueue(ArrayBlockingQueue<HoneycombConnection> idleQueue) {
+        this.idleQueue = idleQueue;
+    }
+
+    public Thread getCleaner() {
+        return cleaner;
+    }
+
+    public void setCleaner(Thread cleaner) {
+        this.cleaner = cleaner;
+    }
+    
 }

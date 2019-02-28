@@ -37,18 +37,6 @@ public class NicoPoolTests {
         System.out.println(System.currentTimeMillis() - start + " ms");
     }
     
-    @Test
-    public void testMysqlDataSource() throws SQLException, InterruptedException, ClassNotFoundException{
-        Class.forName("com.mysql.cj.jdbc.Driver");
-        long start = System.currentTimeMillis();
-        MysqlDataSource dataSource = new MysqlDataSource();
-        dataSource.setUrl("jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8&useSSL=false&transformedBitIsBoolean=true&zeroDateTimeBehavior=CONVERT_TO_NULL&serverTimezone=Asia/Shanghai");
-        dataSource.setUser("root");
-        dataSource.setPassword("root");
-        test(dataSource, 10000);
-        System.out.println(System.currentTimeMillis() - start + " ms");
-    }
-    
     public static void test(DataSource dataSource, int count) throws SQLException, InterruptedException {
         
         CountDownLatch cdl = new CountDownLatch(count);

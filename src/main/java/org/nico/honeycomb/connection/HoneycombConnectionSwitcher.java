@@ -2,15 +2,11 @@ package org.nico.honeycomb.connection;
 
 public interface HoneycombConnectionSwitcher {
 
-    boolean switchLeisure();
-    
-    boolean switchRecycled();
+    boolean switchIdle();
     
     boolean switchOccupied();
     
-    boolean leisured();
-    
-    boolean recycled();
+    boolean idle();
     
     boolean occupied();
 
