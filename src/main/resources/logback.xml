@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<configuration>
+
+	<!-- ch.qos.logback.core.ConsoleAppender 控制台输出 -->
+	<appender name="console"
+		class="ch.qos.logback.core.ConsoleAppender">
+		<encoder charset="UTF-8">
+			<pattern>[%-5level] %d{HH:mm:ss.SSS} [%thread] %logger{36} - %msg%n
+			</pattern>
+		</encoder>
+	</appender>
+
+	<!-- 日志级别 -->
+	<root>
+		<level value="error" />
+		<appender-ref ref="console" />
+	</root>
+
+	<logger name="org.nico.honeycomb" level="DEBUG" />
+
+</configuration>

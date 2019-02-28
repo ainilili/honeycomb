@@ -3,6 +3,7 @@ package org.nico.honeycomb.tests;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -13,8 +14,6 @@ import javax.sql.DataSource;
 import org.junit.Test;
 import org.nico.honeycomb.connection.HoneycombConnection;
 import org.nico.honeycomb.datasource.HoneycombDataSource;
-
-import com.mysql.cj.jdbc.MysqlDataSource;
 
 public class NicoPoolTests {
 
@@ -33,7 +32,8 @@ public class NicoPoolTests {
         dataSource.setMaxWaitTime(Long.MAX_VALUE);
         dataSource.setMinPoolSize(100);
         
-        test(dataSource, 10000);
+//        test(dataSource, 10000);
+        test(dataSource);
         System.out.println(System.currentTimeMillis() - start + " ms");
     }
     
@@ -58,6 +58,28 @@ public class NicoPoolTests {
         cdl.await();
         
         tpe.shutdown();
+    }
+    
+    public static void test(DataSource dataSource) throws SQLException, InterruptedException {
+        Random random = new Random();
+        while(true) {
+            try {
+                Thread.sleep(random.nextInt(1000) + 10);   
+            }catch(Exception e) {}
+
+            tpe.execute(() -> {
+                try {
+                    HoneycombConnection connection = (HoneycombConnection) dataSource.getConnection();
+                    Statement s = connection.createStatement();
+                    ResultSet rs = s.executeQuery("select * from test limit 0,1");
+                    rs.next();
+                    System.out.println("连接ID " + connection.getIndex());
+                    connection.close();
+                }catch(Exception e) {
+                }finally {
+                }
+            });
+        }
     }
     
 }

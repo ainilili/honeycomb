@@ -1,17 +1,19 @@
 package org.nico.honeycomb.connection.pool;
 
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.nico.honeycomb.connection.HoneycombConnection;
 import org.nico.honeycomb.connection.pool.feature.HoneycombConnectionPoolCleaner;
+import org.nico.honeycomb.connection.pool.feature.HoneycombConnectionPoolLRU;
 
 
 public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     private int maxPoolSize;
+    
+    private long maxIdleTime;
 
     private HoneycombConnection[] pools;
 
@@ -20,12 +22,15 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
     private ArrayBlockingQueue<HoneycombConnection> idleQueue;
     
     private Thread cleaner;
+    
+    private Thread lru;
 
-    public HoneycombConnectionPool(int maxPoolSize) {
+    public HoneycombConnectionPool(int maxPoolSize, long maxIdleTime) {
         pools = new HoneycombConnection[this.maxPoolSize = maxPoolSize];
         idleQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
         poolIndex = new AtomicInteger(-1);
-        cleaner = new HoneycombConnectionPoolCleaner(this);
+        cleaner = new HoneycombConnectionPoolCleaner(this, this.maxIdleTime = maxIdleTime, 1000 * 5l);
+        lru = new HoneycombConnectionPoolLRU(this, 1000 * 5l);
     }
 
     public Integer applyIndex() {
@@ -104,7 +109,6 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         cleaner.start();
     }
 
-
     @Override
     public void enableMonitor() {
         throw new UnsupportedOperationException();
@@ -112,7 +116,7 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     @Override
     public void enableLRU() {
-        
+        lru.start();
     }
 
     public int getMaxPoolSize() {

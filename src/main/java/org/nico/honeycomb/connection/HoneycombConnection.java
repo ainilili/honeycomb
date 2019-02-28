@@ -76,6 +76,14 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
         return status == ConnectionStatus.OCCUPIED;
     }
     
+    public double usageFrequency() {
+        return (TimeUtils.getRealTime() - usageTime) / (double) usageCount;
+    }
+    
+    public double idleTime() {
+        return TimeUtils.getRealTime() - idleStartTime;
+    }
+    
     public boolean flushIdleStartTime() {
         idleStartTime = TimeUtils.getRealTime();
         return true;
@@ -141,6 +149,11 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
         } else if (!index.equals(other.index))
             return false;
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return index + "";
     }
 
 }

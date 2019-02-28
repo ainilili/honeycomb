@@ -33,7 +33,7 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
     private long maxWaitTime;
 
     private long maxIdleTime;
-
+    
     private HoneycombConnectionPool pool;
 
     private volatile boolean initialStarted;
@@ -90,8 +90,9 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
         super.setUser(username);
         super.setPassword(password);
 
-        pool = new HoneycombConnectionPool(maxPoolSize);
+        pool = new HoneycombConnectionPool(maxPoolSize, maxIdleTime);
         pool.enableCleaner();
+        pool.enableLRU();
 
         if(initialPoolSize > maxPoolSize) initialPoolSize = maxPoolSize;
 
