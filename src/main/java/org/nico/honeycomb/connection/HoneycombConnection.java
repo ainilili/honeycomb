@@ -39,7 +39,7 @@ public class HoneycombConnection extends HoneycombConnectionBridge implements Ho
     @Override
     public void close() {
         if(switchLeisure()) {
-            pool.addToLeisureIds(this);   
+            pool.recycle(this);   
         }
     }
 

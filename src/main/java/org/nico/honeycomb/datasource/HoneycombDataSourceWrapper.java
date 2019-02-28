@@ -47,7 +47,7 @@ public class HoneycombDataSourceWrapper implements DataSource{
     }
 
     @Override
-    public Connection getConnection() throws SQLException {
+    public Connection getConnection() throws SQLException{
         return null;
     }
 

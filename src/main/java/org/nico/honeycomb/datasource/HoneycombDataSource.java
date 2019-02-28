@@ -15,58 +15,51 @@ import org.nico.honeycomb.connection.pool.HoneycombConnectionPool;
 public class HoneycombDataSource extends HoneycombDataSourceWrapper implements DataSource{
 
     private String url;
-    
+
     private String username;
-    
+
     private String password;
-    
+
     private String driver;
-    
-    private int initalPoolSize;
-    
+
+    private int initialPoolSize;
+
     private int maxPoolSize;
-    
+
     private int minPoolSize;
-    
+
     private long maxWaitTime;
-    
+
     private long maxIdleTime;
-    
+
     private HoneycombConnectionPool pool;
-    
-    private volatile boolean isInit;
-    private volatile boolean inited;
-    
-    
-    final Lock initLock = new ReentrantLock();
-    final Condition initCondition = initLock.newCondition();
-    
+
+    private volatile boolean initialStarted;
+
+    private volatile boolean initialFinished;
+
+    final static Lock INITIAL_LOCK = new ReentrantLock();
+
+    final static Condition INITIAL_CONDITION = INITIAL_LOCK.newCondition();
+
     @Override
     public Connection getConnection() throws SQLException {
         try {
-            initLock.lock();
             init();
-            if(! inited) {
-                initCondition.await();
-            }
         } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } finally {
-            initLock.unlock();
+            throw new RuntimeException(e);
         }
         
         HoneycombConnection cn = null;
         Integer index = null;
-        if(pool.hasLeisure()) {
+        if(pool.assignable()) {
             cn = pool.getConnection(maxWaitTime);
         }else if((index =  pool.applyIndex()) != null) {
-            cn = pool.addUsedConnection(createNativeConnection(pool), index);
+            cn = pool.putUsedConnection(createNativeConnection(pool), index);
         }else {
             cn = pool.getConnection(maxWaitTime);
         }
-        
+
         if(cn.isClosed()) {
             return pool.putUsedConnection(createNativeConnection(pool), cn.getIndex());
         }
@@ -77,28 +70,46 @@ public class HoneycombDataSource extends HoneycombDataSourceWrapper implements D
     public Connection getConnection(String username, String password) throws SQLException {
         return null;
     }
-    
+
     private void init() throws ClassNotFoundException, SQLException {
-        if(isInit) {
+        if(initialStarted || ! (initialStarted = ! initialStarted)) {
+            if(! initialFinished) {
+                try {
+                    INITIAL_LOCK.lock();
+                    INITIAL_CONDITION.await();
+                } catch (InterruptedException e) {
+                } finally {
+                    INITIAL_LOCK.unlock();
+                }
+            }
             return;
         }
-        isInit = true;
         
         Class.forName(driver);
-        
+
         pool = new HoneycombConnectionPool(maxPoolSize);
-        
-        if(initalPoolSize > maxPoolSize) {
-            initalPoolSize = maxPoolSize;
+
+        if(initialPoolSize > maxPoolSize) {
+            initialPoolSize = maxPoolSize;
+        }
+
+        Integer index = null;
+        for(int i = 0; i < initialPoolSize; i ++) {
+            if((index =  pool.applyIndex()) != null) {
+                pool.putUnUsedConnection(createNativeConnection(pool), index);
+            }
         }
         
-        for(int i = 0; i < initalPoolSize; i ++) {
-            pool.addUnUsedConnection(createNativeConnection(pool));
+        initialFinished = true;
+        try {
+            INITIAL_LOCK.lock();
+            INITIAL_CONDITION.signalAll();
+        }catch(Exception e) {
+        }finally {
+            INITIAL_LOCK.unlock();
         }
-        inited = true;
-        initCondition.signalAll();
     }
-    
+
     public HoneycombConnectionPool getPool() {
         return pool;
     }
@@ -143,12 +154,12 @@ public class HoneycombDataSource extends HoneycombDataSourceWrapper implements D
         this.driver = driver;
     }
 
-    public int getInitalPoolSize() {
-        return initalPoolSize;
+    public int getInitialPoolSize() {
+        return initialPoolSize;
     }
 
-    public void setInitalPoolSize(int initalPoolSize) {
-        this.initalPoolSize = initalPoolSize;
+    public void setInitialPoolSize(int initialPoolSize) {
+        this.initialPoolSize = initialPoolSize;
     }
 
     public int getMaxPoolSize() {

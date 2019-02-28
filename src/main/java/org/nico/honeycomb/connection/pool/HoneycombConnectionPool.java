@@ -3,66 +3,54 @@ package org.nico.honeycomb.connection.pool;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.nico.honeycomb.connection.HoneycombConnection;
 
 
 public class HoneycombConnectionPool{
 
+    private int maxPoolSize;
+
     private HoneycombConnection[] pools;
 
     private AtomicInteger poolIndex;
 
-    private int maxSize;
+    private LinkedBlockingQueue<Integer> idleQueue;
 
-    private LinkedBlockingQueue<Integer> leisureIds;
-
-    final Lock addLock = new ReentrantLock();
-    final Lock leisureLock = new ReentrantLock();
-
-    final Condition leisureCondition = leisureLock.newCondition();  
-
-    public HoneycombConnectionPool(int max) {
-        maxSize = max;
-        pools = new HoneycombConnection[max];
-        leisureIds = new LinkedBlockingQueue<Integer>();
+    public HoneycombConnectionPool(int maxPoolSize) {
+        pools = new HoneycombConnection[this.maxPoolSize = maxPoolSize];
+        idleQueue = new LinkedBlockingQueue<Integer>();
         poolIndex = new AtomicInteger(-1);
     }
 
-    public Lock getLeisureLock() {
-        return leisureLock;
-    }
-
     public Integer applyIndex() {
-        if(poolIndex.get() < maxSize) {
+        if(poolIndex.get() < maxPoolSize) {
             Integer index = poolIndex.incrementAndGet();
-            if(index < maxSize) {
+            if(index < maxPoolSize) {
                 return index;
             }
         }
         return null;
     }
 
-    public boolean hasLeisure() {
-        return leisureIds.size() > 0;
-    }
-
-    public Condition getLeisureCondition() {
-        return leisureCondition;
+    public boolean assignable() {
+        return idleQueue.size() > 0;
     }
 
     public HoneycombConnection getConnection(long wait) {
         try {
-            Integer index = leisureIds.poll(wait, TimeUnit.MILLISECONDS);
-            if(index != null) {
-                HoneycombConnection nc = pools[index];
-                if(nc.isClosed() && nc.switchOccupied()) {
-                    leisureIds.remove(nc.getIndex());
-                    return nc;
+            while(wait > 0) {
+                long beginPollNanoTime = System.nanoTime();
+                Integer index = idleQueue.poll(wait, TimeUnit.MILLISECONDS);
+                if(index != null) {
+                    HoneycombConnection nc = pools[index];
+                    if(nc.isClosed() && nc.switchOccupied()) {
+                        idleQueue.remove(nc.getIndex());
+                        return nc;
+                    }
                 }
+                long timeConsuming = (System.nanoTime() - beginPollNanoTime) / 1000 * 1000 ;
+                wait -= timeConsuming;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -71,47 +59,24 @@ public class HoneycombConnectionPool{
         throw new RuntimeException("获取连接超时");
     }
 
-    public HoneycombConnection addUsedConnection(HoneycombConnection nc, Integer id) {
-        addLock.lock();
-        pools[id] = nc;
-        nc.switchOccupied();
-        nc.setIndex(id);
-        addLock.unlock();
-        return nc;
-    }
-
     public HoneycombConnection putUsedConnection(HoneycombConnection nc, Integer id) {
-        addLock.lock();
-        pools[id] = nc;
         nc.switchOccupied();
         nc.setIndex(id);
-        leisureIds.add(id);
-        addLock.unlock();
+        pools[id] = nc;
+        idleQueue.remove(id);
         return nc;
     }
 
-    public HoneycombConnection addUnUsedConnection(HoneycombConnection nc) {
-        addLock.lock();
-        Integer id = poolIndex.incrementAndGet();
-        pools[id] = nc;
+    public HoneycombConnection putUnUsedConnection(HoneycombConnection nc, Integer id) {
         nc.switchLeisure();
         nc.setIndex(id);
-        leisureIds.add(id);
-        addLock.unlock();
+        pools[id] = nc;
+        idleQueue.add(id);
         return nc;
     }
 
-    public void addToLeisureIds(HoneycombConnection nc) {
-        try {
-            leisureLock.lock();
-            leisureIds.add(nc.getIndex());
-            leisureCondition.signal();   
-        }catch(Exception e) {
-            e.printStackTrace();
-        }finally {
-            leisureLock.unlock();
-        }
-
+    public void recycle(HoneycombConnection nc) {
+        idleQueue.add(nc.getIndex());
     }
 
     public HoneycombConnection[] getPools() {
