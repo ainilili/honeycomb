@@ -71,11 +71,6 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
         }
         return cn;
     }
-    
-    @Override
-    public Connection getConnection(String username, String password) throws SQLException {
-        return getConnection();
-    }
 
     private void init() throws ClassNotFoundException, SQLException {
         if(initialStarted || ! (initialStarted = ! initialStarted)) {

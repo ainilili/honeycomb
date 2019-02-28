@@ -19,11 +19,11 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
-public class HoneycombConnectionBridge implements Connection{
+public class HoneycombConnectionDecorator implements Connection{
 
     protected Connection connection;
     
-    protected HoneycombConnectionBridge(Connection connection) {
+    protected HoneycombConnectionDecorator(Connection connection) {
         this.connection = connection;
     }
 
