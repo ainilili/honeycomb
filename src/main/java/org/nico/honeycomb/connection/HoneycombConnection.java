@@ -10,7 +10,7 @@ import org.nico.honeycomb.utils.UnsafeUtils;
 import sun.misc.Unsafe;
 
 @SuppressWarnings("restriction")
-public class HoneycombConnection extends HoneycombConnectionBridge implements HoneycombConnectionSwitcher{
+public class HoneycombConnection extends HoneycombConnectionDecorator implements HoneycombConnectionSwitcher{
 
     private Integer index;
     

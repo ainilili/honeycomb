@@ -12,7 +12,9 @@ import javax.sql.DataSource;
 import org.nico.honeycomb.connection.HoneycombConnection;
 import org.nico.honeycomb.connection.pool.HoneycombConnectionPool;
 
-public class HoneycombDataSource extends HoneycombDataSourceWrapper implements DataSource{
+import com.mysql.cj.jdbc.MysqlDataSource;
+
+public class HoneycombDataSource extends MysqlDataSource implements DataSource{
 
     private String url;
 
@@ -38,10 +40,14 @@ public class HoneycombDataSource extends HoneycombDataSourceWrapper implements D
 
     private volatile boolean initialFinished;
 
-    final static Lock INITIAL_LOCK = new ReentrantLock();
+    static final Lock INITIAL_LOCK = new ReentrantLock();
 
-    final static Condition INITIAL_CONDITION = INITIAL_LOCK.newCondition();
+    static final Condition INITIAL_CONDITION = INITIAL_LOCK.newCondition();
+    
+    static final long serialVersionUID = 616240872756692735L;
 
+    
+    
     @Override
     public Connection getConnection() throws SQLException {
         try {
@@ -65,10 +71,10 @@ public class HoneycombDataSource extends HoneycombDataSourceWrapper implements D
         }
         return cn;
     }
-
+    
     @Override
     public Connection getConnection(String username, String password) throws SQLException {
-        return null;
+        return getConnection();
     }
 
     private void init() throws ClassNotFoundException, SQLException {
@@ -86,6 +92,10 @@ public class HoneycombDataSource extends HoneycombDataSourceWrapper implements D
         }
         
         Class.forName(driver);
+        
+        super.setUrl(url);
+        super.setUser(username);
+        super.setPassword(password);
 
         pool = new HoneycombConnectionPool(maxPoolSize);
 
@@ -119,7 +129,7 @@ public class HoneycombDataSource extends HoneycombDataSourceWrapper implements D
     }
 
     public HoneycombConnection createNativeConnection(HoneycombConnectionPool pool) throws SQLException {
-        return new HoneycombConnection(DriverManager.getConnection(url, username, password), pool);
+        return new HoneycombConnection(super.getConnection(), pool);
     }
 
     public String getUrl() {
