@@ -53,7 +53,15 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
 
     @Override
     public boolean isClosed() throws SQLException {
-        return status == ConnectionStatus.IDLE || connection.isClosed();
+        return status == ConnectionStatus.IDLE;
+    }
+    
+    public boolean isClosedActive() throws SQLException {
+        return connection.isClosed();
+    }
+    
+    public void closeActive() throws SQLException {
+        connection.close();
     }
 
     @Override
@@ -153,7 +161,7 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
 
     @Override
     public String toString() {
-        return index + "";
+        return index + "|" + status;
     }
 
 }

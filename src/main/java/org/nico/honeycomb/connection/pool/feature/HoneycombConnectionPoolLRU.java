@@ -33,7 +33,7 @@ public class HoneycombConnectionPoolLRU extends Thread{
             }
             synchronized (pool) {
                 ArrayBlockingQueue<HoneycombConnection> idleQueue = pool.getIdleQueue();
-                logger.info("LRU Model To Start：" + idleQueue);
+                logger.debug("LRU Model To Start：" + idleQueue);
                 
                 idleQueue.stream().sorted(new Comparator<HoneycombConnection>() {
                     @Override
@@ -45,7 +45,7 @@ public class HoneycombConnectionPoolLRU extends Thread{
                 List<HoneycombConnection> sortedList = idleQueue.stream().sorted(Comparator.comparing(HoneycombConnection::usageFrequency).reversed()).collect(Collectors.toList());
                 idleQueue.clear();
                 idleQueue.addAll(sortedList);
-                logger.info("LRU Model To Finished：" + idleQueue);
+                logger.debug("LRU Model To Finished：" + idleQueue);
             }
         }
     }

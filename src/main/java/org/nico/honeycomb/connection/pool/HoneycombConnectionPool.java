@@ -21,6 +21,8 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     private ArrayBlockingQueue<HoneycombConnection> idleQueue;
     
+    private ArrayBlockingQueue<HoneycombConnection> freezeQueue;
+    
     private Thread cleaner;
     
     private Thread lru;
@@ -28,6 +30,7 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
     public HoneycombConnectionPool(int maxPoolSize, long maxIdleTime) {
         pools = new HoneycombConnection[this.maxPoolSize = maxPoolSize];
         idleQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
+        freezeQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
         poolIndex = new AtomicInteger(-1);
         cleaner = new HoneycombConnectionPoolCleaner(this, this.maxIdleTime = maxIdleTime, 1000 * 5l);
         lru = new HoneycombConnectionPoolLRU(this, 1000 * 5l);
@@ -44,10 +47,14 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
     }
 
     public boolean assignable() {
-        return idleQueue.size() > 0;
+        return ! idleQueue.isEmpty();
     }
-
-    public HoneycombConnection getConnection(long wait) {
+    
+    public boolean actionable() {
+        return ! freezeQueue.isEmpty();
+    }
+    
+    public HoneycombConnection getIdleConnection(long wait) {
         try {
             while(wait > 0) {
                 long beginPollNanoTime = System.nanoTime();
@@ -66,6 +73,10 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         }finally {
         }
         throw new RuntimeException("获取连接超时");
+    }
+    
+    public HoneycombConnection getFreezeConnection() {
+        return freezeQueue.poll();
     }
 
     public HoneycombConnection putOccupiedConnection(HoneycombConnection nc, Integer id) {
@@ -141,6 +152,14 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     public void setCleaner(Thread cleaner) {
         this.cleaner = cleaner;
+    }
+
+    public ArrayBlockingQueue<HoneycombConnection> getFreezeQueue() {
+        return freezeQueue;
+    }
+
+    public void setFreezeQueue(ArrayBlockingQueue<HoneycombConnection> freezeQueue) {
+        this.freezeQueue = freezeQueue;
     }
     
 }

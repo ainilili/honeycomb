@@ -1,7 +1,6 @@
 package org.nico.honeycomb.datasource;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -11,6 +10,8 @@ import javax.sql.DataSource;
 
 import org.nico.honeycomb.connection.HoneycombConnection;
 import org.nico.honeycomb.connection.pool.HoneycombConnectionPool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
 
@@ -34,6 +35,10 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
 
     private long maxIdleTime;
     
+    private boolean enableLRU = true;
+    
+    private boolean enableCleaner = true;
+    
     private HoneycombConnectionPool pool;
 
     private volatile boolean initialStarted;
@@ -43,6 +48,8 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
     static final Lock INITIAL_LOCK = new ReentrantLock();
 
     static final Condition INITIAL_CONDITION = INITIAL_LOCK.newCondition();
+    
+    private Logger logger = LoggerFactory.getLogger(HoneycombDataSource.class);
     
     static final long serialVersionUID = 616240872756692735L;
 
@@ -57,14 +64,17 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
         HoneycombConnection cn = null;
         Integer index = null;
         if(pool.assignable()) {
-            cn = pool.getConnection(maxWaitTime);
+            cn = pool.getIdleConnection(maxWaitTime);
+        }else if(pool.actionable()) {
+            cn = pool.getFreezeConnection();
         }else if((index =  pool.applyIndex()) != null) {
             cn = pool.putOccupiedConnection(createNativeConnection(pool), index);
-        }else {
-            cn = pool.getConnection(maxWaitTime);
         }
-
-        if(cn.isClosed()) {
+        
+        if(cn == null) {
+            cn = pool.getIdleConnection(maxWaitTime);
+        }else if(cn.isClosedActive()) {
+            logger.debug(cn.getIndex() + " connection is already closed, create new !");
             return pool.putOccupiedConnection(createNativeConnection(pool), cn.getIndex());
         }
         return cn;
@@ -91,8 +101,13 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
         super.setPassword(password);
 
         pool = new HoneycombConnectionPool(maxPoolSize, maxIdleTime);
-        pool.enableCleaner();
-        pool.enableLRU();
+        
+        if(enableCleaner) {
+            pool.enableCleaner();
+        }
+        if(enableLRU) {
+            pool.enableLRU();    
+        }
 
         if(initialPoolSize > maxPoolSize) initialPoolSize = maxPoolSize;
 
@@ -195,6 +210,14 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
 
     public void setMaxIdleTime(long maxIdleTime) {
         this.maxIdleTime = maxIdleTime;
+    }
+
+    public void enableLRU(boolean enableLRU) {
+        this.enableLRU = enableLRU;
+    }
+
+    public void enableCleaner(boolean enableCleaner) {
+        this.enableCleaner = enableCleaner;
     }
 
 }
