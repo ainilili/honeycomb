@@ -2,7 +2,7 @@ package org.nico.honeycomb.connection.pool.feature;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.stream.Collectors;
 
 import org.nico.honeycomb.connection.HoneycombConnection;
@@ -32,7 +32,7 @@ public class HoneycombConnectionPoolLRU extends Thread{
             } catch (InterruptedException e) {
             }
             synchronized (pool) {
-                ArrayBlockingQueue<HoneycombConnection> idleQueue = pool.getIdleQueue();
+                LinkedBlockingDeque<HoneycombConnection> idleQueue = pool.getIdleQueue();
                 logger.debug("LRU Model To Start：" + idleQueue);
                 
                 List<HoneycombConnection> sortedList = idleQueue.stream().sorted(Comparator.comparing(HoneycombConnection::usageFrequency).reversed()).collect(Collectors.toList());

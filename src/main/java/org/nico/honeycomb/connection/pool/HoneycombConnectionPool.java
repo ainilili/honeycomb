@@ -1,6 +1,7 @@
 package org.nico.honeycomb.connection.pool;
 
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -21,7 +22,7 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     private ArrayBlockingQueue<HoneycombConnection> workQueue;
     
-    private ArrayBlockingQueue<HoneycombConnection> idleQueue;
+    private LinkedBlockingDeque<HoneycombConnection> idleQueue;
     
     private ArrayBlockingQueue<HoneycombConnection> freezeQueue;
     
@@ -31,7 +32,7 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     public HoneycombConnectionPool(int maxPoolSize, long maxIdleTime) {
         pools = new HoneycombConnection[this.maxPoolSize = maxPoolSize];
-        idleQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
+        idleQueue = new LinkedBlockingDeque<HoneycombConnection>(maxPoolSize);
         freezeQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
         workQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
         poolIndex = new AtomicInteger(-1);
@@ -102,7 +103,8 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
     }
 
     public boolean recycle(HoneycombConnection nc) {
-        return idleQueue.add(nc) && workQueue.remove(nc);
+        idleQueue.addFirst(nc);
+        return workQueue.remove(nc);
     }
     
     public boolean working(HoneycombConnection nc) {
@@ -152,11 +154,11 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         this.maxPoolSize = maxPoolSize;
     }
 
-    public ArrayBlockingQueue<HoneycombConnection> getIdleQueue() {
+    public LinkedBlockingDeque<HoneycombConnection> getIdleQueue() {
         return idleQueue;
     }
 
-    public void setIdleQueue(ArrayBlockingQueue<HoneycombConnection> idleQueue) {
+    public void setIdleQueue(LinkedBlockingDeque<HoneycombConnection> idleQueue) {
         this.idleQueue = idleQueue;
     }
 

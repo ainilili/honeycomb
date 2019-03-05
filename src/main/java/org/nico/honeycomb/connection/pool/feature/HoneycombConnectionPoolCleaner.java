@@ -1,7 +1,7 @@
 package org.nico.honeycomb.connection.pool.feature;
 
 import java.sql.SQLException;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 
 import org.nico.honeycomb.connection.HoneycombConnection;
 import org.nico.honeycomb.connection.pool.HoneycombConnectionPool;
@@ -33,7 +33,7 @@ public class HoneycombConnectionPoolCleaner extends Thread{
             } catch (InterruptedException e) {
             }
             synchronized (pool) {
-                ArrayBlockingQueue<HoneycombConnection> idleQueue = pool.getIdleQueue();
+                LinkedBlockingDeque<HoneycombConnection> idleQueue = pool.getIdleQueue();
                 logger.debug("Cleaner Model To Start：" + idleQueue);
                 idleQueue.parallelStream().filter(c -> { return c.idleTime() > maxIdleTime; }).forEach(c -> {
                     try {
