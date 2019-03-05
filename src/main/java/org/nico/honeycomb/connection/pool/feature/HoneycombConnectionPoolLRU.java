@@ -35,13 +35,6 @@ public class HoneycombConnectionPoolLRU extends Thread{
                 ArrayBlockingQueue<HoneycombConnection> idleQueue = pool.getIdleQueue();
                 logger.debug("LRU Model To Start：" + idleQueue);
                 
-                idleQueue.stream().sorted(new Comparator<HoneycombConnection>() {
-                    @Override
-                    public int compare(HoneycombConnection o1, HoneycombConnection o2) {
-                        return 0;
-                    }
-                });
-                
                 List<HoneycombConnection> sortedList = idleQueue.stream().sorted(Comparator.comparing(HoneycombConnection::usageFrequency).reversed()).collect(Collectors.toList());
                 idleQueue.clear();
                 idleQueue.addAll(sortedList);

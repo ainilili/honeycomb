@@ -29,17 +29,18 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
     
     private static long statusOffset = UnsafeUtils.getFieldOffset(HoneycombConnection.class, "status");
     
-    private HoneycombConnection(Connection connection) {
+    private HoneycombConnection(Connection connection) throws SQLException {
         super(connection);
         this.usageTime = TimeUtils.getRealTime();
+        if(connection.isClosed()) throw new SQLException();
     }
     
-    public HoneycombConnection(Connection connection, HoneycombConnectionPool pool) {
+    public HoneycombConnection(Connection connection, HoneycombConnectionPool pool) throws SQLException {
         this(connection);
         this.pool = pool;
     }
     
-    public HoneycombConnection(Connection connection, HoneycombConnectionPool pool, int index) {
+    public HoneycombConnection(Connection connection, HoneycombConnectionPool pool, int index) throws SQLException {
         this(connection, pool);
         this.index = index;
     }
@@ -161,7 +162,7 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
 
     @Override
     public String toString() {
-        return index + "|" + status;
+        return index + "|" + status + "|" + usageFrequency();
     }
 
 }

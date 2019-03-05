@@ -34,13 +34,13 @@ public class HoneycombConnectionPoolCleaner extends Thread{
             }
             synchronized (pool) {
                 ArrayBlockingQueue<HoneycombConnection> idleQueue = pool.getIdleQueue();
-                logger.info("Cleaner Model To Start：" + idleQueue);
+                logger.debug("Cleaner Model To Start：" + idleQueue);
                 idleQueue.parallelStream().filter(c -> { return c.idleTime() > maxIdleTime; }).forEach(c -> {
                     try {
                         if(! c.isClosedActive()) {
                             c.closeActive();
                         }
-                        pool.getFreezeQueue().add(c);
+                        pool.freeze(c);
                     } catch (SQLException e) {
                         e.printStackTrace();
                     }

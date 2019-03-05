@@ -19,6 +19,8 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     private AtomicInteger poolIndex;
 
+    private ArrayBlockingQueue<HoneycombConnection> workQueue;
+    
     private ArrayBlockingQueue<HoneycombConnection> idleQueue;
     
     private ArrayBlockingQueue<HoneycombConnection> freezeQueue;
@@ -31,6 +33,7 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         pools = new HoneycombConnection[this.maxPoolSize = maxPoolSize];
         idleQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
         freezeQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
+        workQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
         poolIndex = new AtomicInteger(-1);
         cleaner = new HoneycombConnectionPoolCleaner(this, this.maxIdleTime = maxIdleTime, 1000 * 5l);
         lru = new HoneycombConnectionPoolLRU(this, 1000 * 5l);
@@ -60,8 +63,7 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
                 long beginPollNanoTime = System.nanoTime();
                 HoneycombConnection nc = idleQueue.poll(wait, TimeUnit.MILLISECONDS);
                 if(nc != null) {
-                    if(nc.isClosed() && nc.switchOccupied()) {
-                        idleQueue.remove(nc);
+                    if(nc.isClosed() && nc.switchOccupied() && working(nc)) {
                         return nc;
                     }
                 }
@@ -76,7 +78,9 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
     }
     
     public HoneycombConnection getFreezeConnection() {
-        return freezeQueue.poll();
+        HoneycombConnection cn = freezeQueue.poll();
+        if(cn != null) working(cn);
+        return cn;
     }
 
     public HoneycombConnection putOccupiedConnection(HoneycombConnection nc, Integer id) {
@@ -84,6 +88,7 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         nc.setIndex(id);
         pools[id] = nc;
         idleQueue.remove(nc);
+        workQueue.add(nc);
         return nc;
     }
 
@@ -92,11 +97,20 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         nc.setIndex(id);
         pools[id] = nc;
         idleQueue.add(nc);
+        workQueue.remove(nc);
         return nc;
     }
 
-    public void recycle(HoneycombConnection nc) {
-        idleQueue.add(nc);
+    public boolean recycle(HoneycombConnection nc) {
+        return idleQueue.add(nc) && workQueue.remove(nc);
+    }
+    
+    public boolean working(HoneycombConnection nc) {
+        return workQueue.add(nc);
+    }
+    
+    public boolean freeze(HoneycombConnection nc) {
+        return freezeQueue.add(nc) && idleQueue.remove(nc);
     }
 
     public HoneycombConnection[] getPools() {
@@ -160,6 +174,30 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     public void setFreezeQueue(ArrayBlockingQueue<HoneycombConnection> freezeQueue) {
         this.freezeQueue = freezeQueue;
+    }
+
+    public long getMaxIdleTime() {
+        return maxIdleTime;
+    }
+
+    public void setMaxIdleTime(long maxIdleTime) {
+        this.maxIdleTime = maxIdleTime;
+    }
+
+    public Thread getLru() {
+        return lru;
+    }
+
+    public void setLru(Thread lru) {
+        this.lru = lru;
+    }
+
+    public ArrayBlockingQueue<HoneycombConnection> getWorkQueue() {
+        return workQueue;
+    }
+
+    public void setWorkQueue(ArrayBlockingQueue<HoneycombConnection> workQueue) {
+        this.workQueue = workQueue;
     }
     
 }
