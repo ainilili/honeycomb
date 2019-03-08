@@ -300,5 +300,13 @@ public class HoneycombConnectionDecorator implements Connection{
     public int getNetworkTimeout() throws SQLException {
         return connection.getNetworkTimeout();
     }
+
+    public Connection getConnection() {
+        return connection;
+    }
+
+    public void setConnection(Connection connection) {
+        this.connection = connection;
+    }
     
 }

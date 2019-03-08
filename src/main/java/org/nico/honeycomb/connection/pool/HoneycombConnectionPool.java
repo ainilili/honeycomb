@@ -1,7 +1,7 @@
 package org.nico.honeycomb.connection.pool;
 
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -20,11 +20,11 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     private AtomicInteger poolIndex;
 
-    private ArrayBlockingQueue<HoneycombConnection> workQueue;
+    private LinkedBlockingQueue<HoneycombConnection> workQueue;
     
     private LinkedBlockingDeque<HoneycombConnection> idleQueue;
     
-    private ArrayBlockingQueue<HoneycombConnection> freezeQueue;
+    private LinkedBlockingQueue<HoneycombConnection> freezeQueue;
     
     private Thread cleaner;
     
@@ -32,9 +32,9 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     public HoneycombConnectionPool(int maxPoolSize, long maxIdleTime) {
         pools = new HoneycombConnection[this.maxPoolSize = maxPoolSize];
-        idleQueue = new LinkedBlockingDeque<HoneycombConnection>(maxPoolSize);
-        freezeQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
-        workQueue = new ArrayBlockingQueue<HoneycombConnection>(maxPoolSize);
+        idleQueue = new LinkedBlockingDeque<HoneycombConnection>();
+        freezeQueue = new LinkedBlockingQueue<HoneycombConnection>();
+        workQueue = new LinkedBlockingQueue<HoneycombConnection>();
         poolIndex = new AtomicInteger(-1);
         cleaner = new HoneycombConnectionPoolCleaner(this, this.maxIdleTime = maxIdleTime, 1000 * 5l);
         lru = new HoneycombConnectionPoolLRU(this, 1000 * 5l);
@@ -103,8 +103,9 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
     }
 
     public boolean recycle(HoneycombConnection nc) {
+        workQueue.remove(nc);
         idleQueue.addFirst(nc);
-        return workQueue.remove(nc);
+        return true;
     }
     
     public boolean working(HoneycombConnection nc) {
@@ -170,11 +171,11 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         this.cleaner = cleaner;
     }
 
-    public ArrayBlockingQueue<HoneycombConnection> getFreezeQueue() {
+    public LinkedBlockingQueue<HoneycombConnection> getFreezeQueue() {
         return freezeQueue;
     }
 
-    public void setFreezeQueue(ArrayBlockingQueue<HoneycombConnection> freezeQueue) {
+    public void setFreezeQueue(LinkedBlockingQueue<HoneycombConnection> freezeQueue) {
         this.freezeQueue = freezeQueue;
     }
 
@@ -194,11 +195,11 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         this.lru = lru;
     }
 
-    public ArrayBlockingQueue<HoneycombConnection> getWorkQueue() {
+    public LinkedBlockingQueue<HoneycombConnection> getWorkQueue() {
         return workQueue;
     }
 
-    public void setWorkQueue(ArrayBlockingQueue<HoneycombConnection> workQueue) {
+    public void setWorkQueue(LinkedBlockingQueue<HoneycombConnection> workQueue) {
         this.workQueue = workQueue;
     }
     

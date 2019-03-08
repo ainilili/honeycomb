@@ -74,8 +74,9 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
         if(cn == null) {
             cn = pool.getIdleConnection(maxWaitTime);
         }else if(cn.isClosedActive()) {
-            logger.debug(cn.getIndex() + " connection is already closed, create new !");
-            return pool.putOccupiedConnection(createNativeConnection(pool), cn.getIndex());
+//            logger.debug(cn.getIndex() + " connection is already closed, create new !");
+            cn.setConnection(super.getConnection());
+            return cn;
         }
         return cn;
     }

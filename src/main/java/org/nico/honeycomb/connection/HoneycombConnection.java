@@ -134,6 +134,7 @@ public class HoneycombConnection extends HoneycombConnectionDecorator implements
     public void setUsageCount(long usageCount) {
         this.usageCount = usageCount;
     }
+    
 
     @Override
     public int hashCode() {

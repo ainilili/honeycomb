@@ -16,7 +16,7 @@ public class HoneycombConnectionPoolCleaner extends Thread{
 
     private HoneycombConnectionPool pool;
 
-    private Logger logger = LoggerFactory.getLogger(HoneycombConnectionPoolLRU.class);
+    private Logger logger = LoggerFactory.getLogger(HoneycombConnectionPoolCleaner.class);
 
     public HoneycombConnectionPoolCleaner(HoneycombConnectionPool pool, long maxIdleTime, long interval) {
         this.pool = pool;
@@ -32,20 +32,20 @@ public class HoneycombConnectionPoolCleaner extends Thread{
                 Thread.sleep(interval);
             } catch (InterruptedException e) {
             }
-            synchronized (pool) {
-                LinkedBlockingDeque<HoneycombConnection> idleQueue = pool.getIdleQueue();
-                logger.debug("Cleaner Model To Start：" + idleQueue);
-                idleQueue.parallelStream().filter(c -> { return c.idleTime() > maxIdleTime; }).forEach(c -> {
+            LinkedBlockingDeque<HoneycombConnection> idleQueue = pool.getIdleQueue();
+            synchronized (idleQueue) {
+                logger.debug("Cleaner Model To Start");
+                idleQueue.stream().filter(c -> { return c.idleTime() > maxIdleTime; }).forEach(c -> {
                     try {
-                        if(! c.isClosedActive()) {
+                        if(! c.isClosedActive() && c.idle()) {
                             c.closeActive();
+                            pool.freeze(c);
                         }
-                        pool.freeze(c);
                     } catch (SQLException e) {
                         e.printStackTrace();
-                    }
+                    } 
                 });
-                logger.debug("Cleaner Model To Finished：" + idleQueue);
+                logger.debug("Cleaner Model To Finished");
             }
         }
     }
