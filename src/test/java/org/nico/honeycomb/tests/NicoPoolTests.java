@@ -27,9 +27,9 @@ public class NicoPoolTests {
         dataSource.setUsername("root");
         dataSource.setPassword("root");
         dataSource.setDriver("com.mysql.cj.jdbc.Driver");
-        dataSource.setMaxPoolSize(200);
+        dataSource.setMaxPoolSize(0);
         dataSource.setInitialPoolSize(0);
-        dataSource.setMaxWaitTime(Long.MAX_VALUE);
+        dataSource.setMaxWaitTime(1000);
         dataSource.setMinPoolSize(100);
         dataSource.setMaxIdleTime(1000);
         dataSource.enableLRU(false);
@@ -76,12 +76,14 @@ public class NicoPoolTests {
                     ResultSet rs = s.executeQuery("select * from test limit 0,1");
                     rs.next();
 //                    System.out.println("连接ID " + connection.getIndex());
-                    
                     try {
                         Thread.sleep(random.nextInt(100) + 10);   
-                    }catch(Exception e) {}
+                    }catch(Exception e) {
+                    	e.printStackTrace();
+                    }
                     connection.close();
                 }catch(Exception e) {
+                	e.printStackTrace();
                 }finally {
                 }
             });

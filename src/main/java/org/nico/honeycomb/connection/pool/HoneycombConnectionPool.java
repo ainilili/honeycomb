@@ -68,7 +68,7 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
                         return nc;
                     }
                 }
-                long timeConsuming = (System.nanoTime() - beginPollNanoTime) / 1000 * 1000 ;
+                long timeConsuming = (System.nanoTime() - beginPollNanoTime) / (1000 * 1000);
                 wait -= timeConsuming;
             }
         } catch (Exception e) {

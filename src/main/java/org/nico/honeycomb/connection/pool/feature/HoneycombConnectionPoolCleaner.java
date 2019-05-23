@@ -34,7 +34,7 @@ public class HoneycombConnectionPoolCleaner extends Thread{
             }
             LinkedBlockingDeque<HoneycombConnection> idleQueue = pool.getIdleQueue();
             synchronized (idleQueue) {
-                logger.debug("Cleaner Model To Start");
+                logger.debug("Cleaner Model To Start {}", idleQueue.size());
                 idleQueue.stream().filter(c -> { return c.idleTime() > maxIdleTime; }).forEach(c -> {
                     try {
                         if(! c.isClosedActive() && c.idle()) {
@@ -45,7 +45,7 @@ public class HoneycombConnectionPoolCleaner extends Thread{
                         e.printStackTrace();
                     } 
                 });
-                logger.debug("Cleaner Model To Finished");
+                logger.debug("Cleaner Model To Finished {}", idleQueue.size());
             }
         }
     }
