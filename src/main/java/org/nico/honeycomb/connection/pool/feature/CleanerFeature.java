@@ -18,14 +18,13 @@ public class CleanerFeature extends AbstractFeature{
 
     @Override
     public void doing(HoneycombConnectionPool pool) {
+        LinkedBlockingDeque<HoneycombConnection> idleQueue = pool.getIdleQueue();
         Thread t = new Thread() {
             @Override
             public void run() {
                 while(true) {
                     try {
                         Thread.sleep(interval);
-                        
-                        LinkedBlockingDeque<HoneycombConnection> idleQueue = pool.getIdleQueue();
                         synchronized (idleQueue) {
                             logger.debug("Cleaner Model To Start {}", idleQueue.size());
                             idleQueue.stream().filter(c -> { return c.idleTime() > pool.getConfig().getMaxIdleTime(); }).forEach(c -> {
