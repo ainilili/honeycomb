@@ -13,6 +13,7 @@ import javax.sql.DataSource;
 
 import org.junit.Test;
 import org.nico.honeycomb.connection.HoneycombConnection;
+import org.nico.honeycomb.connection.pool.feature.CleanerFeature;
 import org.nico.honeycomb.datasource.HoneycombDataSource;
 
 public class NicoPoolTests {
@@ -24,17 +25,16 @@ public class NicoPoolTests {
         long start = System.currentTimeMillis();
         HoneycombDataSource dataSource = new HoneycombDataSource();
         dataSource.setUrl("jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8&useSSL=false&transformedBitIsBoolean=true&zeroDateTimeBehavior=CONVERT_TO_NULL&serverTimezone=Asia/Shanghai");
-        dataSource.setUsername("root");
+        dataSource.setUser("root");
         dataSource.setPassword("root");
         dataSource.setDriver("com.mysql.cj.jdbc.Driver");
-        dataSource.setMaxPoolSize(0);
-        dataSource.setInitialPoolSize(0);
+        dataSource.setMaxPoolSize(100);
+        dataSource.setInitialPoolSize(1);
         dataSource.setMaxWaitTime(1000);
         dataSource.setMinPoolSize(100);
         dataSource.setMaxIdleTime(1000);
-        dataSource.enableLRU(false);
+        dataSource.addFeature(new CleanerFeature(true, 5 * 1000));
         
-//        test(dataSource, 10000);
         test(dataSource);
         System.out.println(System.currentTimeMillis() - start + " ms");
     }
@@ -49,7 +49,7 @@ public class NicoPoolTests {
                     Statement s = connection.createStatement();
                     ResultSet rs = s.executeQuery("select * from test limit 0,1");
                     rs.next();
-                    System.out.println("连接ID " + connection.getIndex());
+//                    System.out.println("连接ID " + connection.getIndex());
                     connection.close();
                 }catch(Exception e) {
                 }finally {

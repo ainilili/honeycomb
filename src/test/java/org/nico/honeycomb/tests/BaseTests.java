@@ -12,8 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
 
 import org.junit.Test;
-import org.nico.honeycomb.connection.HoneycombConnection;
-import org.nico.honeycomb.connection.pool.HoneycombConnectionPool;
+import org.nico.honeycomb.connection.pool.feature.CleanerFeature;
 import org.nico.honeycomb.datasource.HoneycombDataSource;
 
 import com.alibaba.druid.pool.DruidDataSource;
@@ -24,7 +23,7 @@ public class BaseTests {
     public void testHoneycomb() throws SQLException, InterruptedException{
         HoneycombDataSource dataSource = new HoneycombDataSource();
         dataSource.setUrl("jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8&useSSL=false&transformedBitIsBoolean=true&zeroDateTimeBehavior=CONVERT_TO_NULL&serverTimezone=Asia/Shanghai");
-        dataSource.setUsername("root");
+        dataSource.setUser("root");
         dataSource.setPassword("root");
         dataSource.setDriver("com.mysql.cj.jdbc.Driver");
         dataSource.setMaxPoolSize(300);
@@ -32,7 +31,7 @@ public class BaseTests {
         dataSource.setMaxWaitTime(Long.MAX_VALUE);
         dataSource.setMinPoolSize(0);
         dataSource.setMaxIdleTime(5000);
-        dataSource.enableLRU(false);
+        dataSource.addFeature(new CleanerFeature(true, 5 * 1000));
 
         test(dataSource, 1000 * 60);
     }

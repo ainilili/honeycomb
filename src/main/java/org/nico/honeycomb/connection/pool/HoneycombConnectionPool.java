@@ -6,15 +6,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.nico.honeycomb.connection.HoneycombConnection;
-import org.nico.honeycomb.connection.pool.feature.HoneycombConnectionPoolCleaner;
-import org.nico.honeycomb.connection.pool.feature.HoneycombConnectionPoolLRU;
+import org.nico.honeycomb.connection.pool.feature.AbstractFeature;
+import org.nico.honeycomb.datasource.HoneycombDatasourceConfig;
 
 
-public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
-
-    private int maxPoolSize;
-    
-    private long maxIdleTime;
+public class HoneycombConnectionPool implements FeatureTrigger{
 
     private HoneycombConnection[] pools;
 
@@ -26,24 +22,21 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
     
     private LinkedBlockingQueue<HoneycombConnection> freezeQueue;
     
-    private Thread cleaner;
+    private HoneycombDatasourceConfig config;
     
-    private Thread lru;
-
-    public HoneycombConnectionPool(int maxPoolSize, long maxIdleTime) {
-        pools = new HoneycombConnection[this.maxPoolSize = maxPoolSize];
-        idleQueue = new LinkedBlockingDeque<HoneycombConnection>();
-        freezeQueue = new LinkedBlockingQueue<HoneycombConnection>();
-        workQueue = new LinkedBlockingQueue<HoneycombConnection>();
-        poolIndex = new AtomicInteger(-1);
-        cleaner = new HoneycombConnectionPoolCleaner(this, this.maxIdleTime = maxIdleTime, 1000 * 5l);
-        lru = new HoneycombConnectionPoolLRU(this, 1000 * 5l);
+    public HoneycombConnectionPool(HoneycombDatasourceConfig config) {
+        this.config = config;
+        this.pools = new HoneycombConnection[config.getMaxPoolSize()];
+        this.idleQueue = new LinkedBlockingDeque<HoneycombConnection>();
+        this.freezeQueue = new LinkedBlockingQueue<HoneycombConnection>();
+        this.workQueue = new LinkedBlockingQueue<HoneycombConnection>();
+        this.poolIndex = new AtomicInteger(-1);
     }
 
     public Integer applyIndex() {
-        if(poolIndex.get() < maxPoolSize) {
+        if(poolIndex.get() < config.getMaxPoolSize()) {
             Integer index = poolIndex.incrementAndGet();
-            if(index < maxPoolSize) {
+            if(index < config.getMaxPoolSize()) {
                 return index;
             }
         }
@@ -58,18 +51,19 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         return ! freezeQueue.isEmpty();
     }
     
-    public HoneycombConnection getIdleConnection(long wait) {
+    public HoneycombConnection getIdleConnection() {
         try {
-            while(wait > 0) {
+            long waitTime = config.getMaxWaitTime();
+            while(waitTime > 0) {
                 long beginPollNanoTime = System.nanoTime();
-                HoneycombConnection nc = idleQueue.poll(wait, TimeUnit.MILLISECONDS);
+                HoneycombConnection nc = idleQueue.poll(waitTime, TimeUnit.MILLISECONDS);
                 if(nc != null) {
                     if(nc.isClosed() && nc.switchOccupied() && working(nc)) {
                         return nc;
                     }
                 }
                 long timeConsuming = (System.nanoTime() - beginPollNanoTime) / (1000 * 1000);
-                wait -= timeConsuming;
+                waitTime -= timeConsuming;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -132,43 +126,12 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         this.poolIndex = poolIndex;
     }
     
-    @Override
-    public void enableCleaner() {
-        cleaner.start();
-    }
-
-    @Override
-    public void enableMonitor() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void enableLRU() {
-        lru.start();
-    }
-
-    public int getMaxPoolSize() {
-        return maxPoolSize;
-    }
-
-    public void setMaxPoolSize(int maxPoolSize) {
-        this.maxPoolSize = maxPoolSize;
-    }
-
     public LinkedBlockingDeque<HoneycombConnection> getIdleQueue() {
         return idleQueue;
     }
 
     public void setIdleQueue(LinkedBlockingDeque<HoneycombConnection> idleQueue) {
         this.idleQueue = idleQueue;
-    }
-
-    public Thread getCleaner() {
-        return cleaner;
-    }
-
-    public void setCleaner(Thread cleaner) {
-        this.cleaner = cleaner;
     }
 
     public LinkedBlockingQueue<HoneycombConnection> getFreezeQueue() {
@@ -179,20 +142,12 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
         this.freezeQueue = freezeQueue;
     }
 
-    public long getMaxIdleTime() {
-        return maxIdleTime;
+    public HoneycombDatasourceConfig getConfig() {
+        return config;
     }
 
-    public void setMaxIdleTime(long maxIdleTime) {
-        this.maxIdleTime = maxIdleTime;
-    }
-
-    public Thread getLru() {
-        return lru;
-    }
-
-    public void setLru(Thread lru) {
-        this.lru = lru;
+    public void setConfig(HoneycombDatasourceConfig config) {
+        this.config = config;
     }
 
     public LinkedBlockingQueue<HoneycombConnection> getWorkQueue() {
@@ -201,6 +156,13 @@ public class HoneycombConnectionPool implements HoneycombConnectionPoolFeature{
 
     public void setWorkQueue(LinkedBlockingQueue<HoneycombConnection> workQueue) {
         this.workQueue = workQueue;
+    }
+
+    @Override
+    public void touchFeatures() {
+        if(! config.getFeatures().isEmpty()) {
+            config.getFeatures().stream().filter(AbstractFeature::isEnable).forEach(e -> e.doing(this));
+        }
     }
     
 }

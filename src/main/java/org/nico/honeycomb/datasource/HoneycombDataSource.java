@@ -6,38 +6,12 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import javax.sql.DataSource;
-
 import org.nico.honeycomb.connection.HoneycombConnection;
 import org.nico.honeycomb.connection.pool.HoneycombConnectionPool;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.mysql.cj.jdbc.MysqlDataSource;
+public class HoneycombDataSource extends HoneycombWrapperDatasource{
 
-public class HoneycombDataSource extends MysqlDataSource implements DataSource{
-
-    private String url;
-
-    private String username;
-
-    private String password;
-
-    private String driver;
-
-    private int initialPoolSize;
-
-    private int maxPoolSize;
-
-    private int minPoolSize;
-
-    private long maxWaitTime;
-
-    private long maxIdleTime;
-    
-    private boolean enableLRU = true;
-    
-    private boolean enableCleaner = true;
+    private String name;
     
     private HoneycombConnectionPool pool;
 
@@ -49,9 +23,16 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
 
     static final Condition INITIAL_CONDITION = INITIAL_LOCK.newCondition();
     
-    private Logger logger = LoggerFactory.getLogger(HoneycombDataSource.class);
-    
     static final long serialVersionUID = 616240872756692735L;
+    
+    public HoneycombDataSource() {
+        this(String.valueOf(System.currentTimeMillis()));
+    }
+    
+    public HoneycombDataSource(String name) {
+        this.config = new HoneycombDatasourceConfig();
+        this.name = name;
+    }
 
     @Override
     public Connection getConnection() throws SQLException {
@@ -64,7 +45,7 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
         HoneycombConnection cn = null;
         Integer index = null;
         if(pool.assignable()) {
-            cn = pool.getIdleConnection(maxWaitTime);
+            cn = pool.getIdleConnection();
         }else if(pool.actionable()) {
             cn = pool.getFreezeConnection();
         }else if((index =  pool.applyIndex()) != null) {
@@ -72,9 +53,8 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
         }
         
         if(cn == null) {
-            cn = pool.getIdleConnection(maxWaitTime);
+            cn = pool.getIdleConnection();
         }else if(cn.isClosedActive()) {
-//            logger.debug(cn.getIndex() + " connection is already closed, create new !");
             cn.setConnection(super.getConnection());
             return cn;
         }
@@ -94,30 +74,21 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
             }
             return;
         }
+        config.assertSelf();
+        HoneycombDatasourceConfigContains.getInstance().put(name, config);
         
-        Class.forName(driver);
-        
-        super.setUrl(url);
-        super.setUser(username);
-        super.setPassword(password);
+        Class.forName(getDriver());
 
-        pool = new HoneycombConnectionPool(maxPoolSize, maxIdleTime);
-        
-        if(enableCleaner) {
-            pool.enableCleaner();
-        }
-        if(enableLRU) {
-            pool.enableLRU();    
-        }
-
-        if(initialPoolSize > maxPoolSize) initialPoolSize = maxPoolSize;
+        pool = new HoneycombConnectionPool(config);
 
         Integer index = null;
-        for(int i = 0; i < initialPoolSize; i ++) {
+        for(int i = 0; i < config.getInitialPoolSize(); i ++) {
             if((index =  pool.applyIndex()) != null) {
                 pool.putLeisureConnection(createNativeConnection(pool), index);
             }
         }
+        
+        pool.touchFeatures();
         
         initialFinished = true;
         try {
@@ -139,86 +110,6 @@ public class HoneycombDataSource extends MysqlDataSource implements DataSource{
 
     public HoneycombConnection createNativeConnection(HoneycombConnectionPool pool) throws SQLException {
         return new HoneycombConnection(super.getConnection(), pool);
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public void setUrl(String url) {
-        this.url = url;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getDriver() {
-        return driver;
-    }
-
-    public void setDriver(String driver) {
-        this.driver = driver;
-    }
-
-    public int getInitialPoolSize() {
-        return initialPoolSize;
-    }
-
-    public void setInitialPoolSize(int initialPoolSize) {
-        this.initialPoolSize = initialPoolSize;
-    }
-
-    public int getMaxPoolSize() {
-        return maxPoolSize;
-    }
-
-    public void setMaxPoolSize(int maxPoolSize) {
-        this.maxPoolSize = maxPoolSize;
-    }
-
-    public int getMinPoolSize() {
-        return minPoolSize;
-    }
-
-    public void setMinPoolSize(int minPoolSize) {
-        this.minPoolSize = minPoolSize;
-    }
-
-    public long getMaxWaitTime() {
-        return maxWaitTime;
-    }
-
-    public void setMaxWaitTime(long maxWaitTime) {
-        this.maxWaitTime = maxWaitTime;
-    }
-
-    public long getMaxIdleTime() {
-        return maxIdleTime;
-    }
-
-    public void setMaxIdleTime(long maxIdleTime) {
-        this.maxIdleTime = maxIdleTime;
-    }
-
-    public void enableLRU(boolean enableLRU) {
-        this.enableLRU = enableLRU;
-    }
-
-    public void enableCleaner(boolean enableCleaner) {
-        this.enableCleaner = enableCleaner;
     }
 
 }
