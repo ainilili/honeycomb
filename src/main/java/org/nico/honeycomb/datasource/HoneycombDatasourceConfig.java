@@ -7,27 +7,35 @@ import org.nico.honeycomb.connection.pool.feature.AbstractFeature;
 import org.nico.honeycomb.utils.AssertUtils;
 
 public class HoneycombDatasourceConfig {
-
+    
+    //db url
     private String url;
 
+    //db user
     private String user;
 
+    //db password
     private String password;
 
+    //driver驱动
     private String driver;
 
+    //初始化连接数，默认为2
     private int initialPoolSize = 2;
 
+    //最大连接数，默认为10
     private int maxPoolSize = 10;
 
+    //最小连接数，默认为2
     private int minPoolSize = 2;
     
-    private int maxConnectTime = 10 * 1000; 
-
+    //获取连接时，最大等待时长，默认为60s
     private long maxWaitTime = 60 * 1000;
 
+    //最大空闲时长，超出要被回收，默认为20s
     private long maxIdleTime = 20 * 1000;
     
+    //特性列表
     private List<AbstractFeature> features;
     
     public HoneycombDatasourceConfig() {
@@ -118,14 +126,6 @@ public class HoneycombDatasourceConfig {
 
     public void setMaxIdleTime(long maxIdleTime) {
         this.maxIdleTime = maxIdleTime;
-    }
-
-    public int getMaxConnectTime() {
-        return maxConnectTime;
-    }
-
-    public void setMaxConnectTime(int maxConnectTime) {
-        this.maxConnectTime = maxConnectTime;
     }
 
 }

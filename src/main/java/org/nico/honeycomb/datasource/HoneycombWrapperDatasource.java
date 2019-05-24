@@ -33,12 +33,11 @@ public class HoneycombWrapperDatasource implements DataSource{
 
     @Override
     public void setLoginTimeout(int seconds) throws SQLException {
-        this.config.setMaxConnectTime(seconds * 1000);
     }
 
     @Override
     public int getLoginTimeout() throws SQLException {
-        return this.config.getMaxConnectTime();
+        return 0;
     }
 
     @Override
@@ -88,14 +87,6 @@ public class HoneycombWrapperDatasource implements DataSource{
 
     public void setMinPoolSize(int minPoolSize) {
         config.setMinPoolSize(minPoolSize);
-    }
-
-    public int getMaxConnectTime() {
-        return config.getMaxConnectTime();
-    }
-
-    public void setMaxConnectTime(int maxConnectTime) {
-        config.setMaxConnectTime(maxConnectTime);
     }
 
     public long getMaxWaitTime() {

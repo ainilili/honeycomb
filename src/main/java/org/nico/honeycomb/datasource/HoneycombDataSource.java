@@ -51,6 +51,7 @@ public class HoneycombDataSource extends HoneycombWrapperDatasource{
     }
 
     private void init() throws ClassNotFoundException, SQLException {
+        //阻塞其他线程初始化操作，等待初始化完成
         if(initialStarted || ! (initialStarted = ! initialStarted)) {
             if(! initialFinished) {
                 try {
@@ -63,12 +64,16 @@ public class HoneycombDataSource extends HoneycombWrapperDatasource{
             }
             return;
         }
+        
+        //config参数校验
         config.assertSelf();
         
         Class.forName(getDriver());
-
+        
+        //实例化线程池
         pool = new HoneycombConnectionPool(config);
-
+        
+        //初始化最小连接
         Integer index = null;
         for(int i = 0; i < config.getInitialPoolSize(); i ++) {
             if((index =  pool.applyIndex()) != null) {
@@ -76,8 +81,10 @@ public class HoneycombDataSource extends HoneycombWrapperDatasource{
             }
         }
         
+        //触发特性
         pool.touchFeatures();
         
+        //完成初始化并唤醒其他阻塞
         initialFinished = true;
         try {
             INITIAL_LOCK.lock();
