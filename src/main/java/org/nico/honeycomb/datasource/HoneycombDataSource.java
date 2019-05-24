@@ -11,8 +11,6 @@ import org.nico.honeycomb.connection.pool.HoneycombConnectionPool;
 
 public class HoneycombDataSource extends HoneycombWrapperDatasource{
 
-    private String name;
-    
     private HoneycombConnectionPool pool;
 
     private volatile boolean initialStarted;
@@ -25,15 +23,6 @@ public class HoneycombDataSource extends HoneycombWrapperDatasource{
     
     static final long serialVersionUID = 616240872756692735L;
     
-    public HoneycombDataSource() {
-        this(String.valueOf(System.currentTimeMillis()));
-    }
-    
-    public HoneycombDataSource(String name) {
-        this.config = new HoneycombDatasourceConfig();
-        this.name = name;
-    }
-
     @Override
     public Connection getConnection() throws SQLException {
         try {
@@ -75,7 +64,6 @@ public class HoneycombDataSource extends HoneycombWrapperDatasource{
             return;
         }
         config.assertSelf();
-        HoneycombDatasourceConfigContains.getInstance().put(name, config);
         
         Class.forName(getDriver());
 
