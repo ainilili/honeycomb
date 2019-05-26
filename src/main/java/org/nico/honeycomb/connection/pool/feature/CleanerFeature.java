@@ -24,9 +24,13 @@ public class CleanerFeature extends AbstractFeature{
             public void run() {
                 while(true) {
                     try {
-                        Thread.sleep(interval);
+                        //回收扫描间隔
+                    	Thread.sleep(interval);
+                        
+                    	//回收时，空闲池上锁
                         synchronized (idleQueue) {
                             logger.debug("Cleaner Model To Start {}", idleQueue.size());
+                            //回收操作
                             idleQueue.stream().filter(c -> { return c.idleTime() > pool.getConfig().getMaxIdleTime(); }).forEach(c -> {
                                 try {
                                     if(! c.isClosedActive() && c.idle()) {

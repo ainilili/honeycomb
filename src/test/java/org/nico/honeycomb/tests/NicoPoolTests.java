@@ -28,28 +28,25 @@ public class NicoPoolTests {
         dataSource.setUser("root");
         dataSource.setPassword("root");
         dataSource.setDriver("com.mysql.cj.jdbc.Driver");
-        dataSource.setMaxPoolSize(100);
-        dataSource.setInitialPoolSize(1);
-        dataSource.setMaxWaitTime(1000);
-        dataSource.setMinPoolSize(100);
-        dataSource.setMaxIdleTime(1000);
+        dataSource.setMaxPoolSize(50);
+        dataSource.setInitialPoolSize(10);
+        dataSource.setMinPoolSize(10);
+        dataSource.setMaxWaitTime(60 * 1000);
+        dataSource.setMaxIdleTime(10 * 1000);
         dataSource.addFeature(new CleanerFeature(true, 5 * 1000));
         
-        test(dataSource);
+        test(dataSource, 10000);
         System.out.println(System.currentTimeMillis() - start + " ms");
     }
     
     public static void test(DataSource dataSource, int count) throws SQLException, InterruptedException {
-        
         CountDownLatch cdl = new CountDownLatch(count);
         for(int i = 0; i < count; i ++) {
             tpe.execute(() -> {
                 try {
                     HoneycombConnection connection = (HoneycombConnection) dataSource.getConnection();
                     Statement s = connection.createStatement();
-                    ResultSet rs = s.executeQuery("select * from test limit 0,1");
-                    rs.next();
-//                    System.out.println("连接ID " + connection.getIndex());
+                    s.executeQuery("select * from test limit 1");
                     connection.close();
                 }catch(Exception e) {
                 }finally {
@@ -58,7 +55,6 @@ public class NicoPoolTests {
             });
         }
         cdl.await();
-        
         tpe.shutdown();
     }
     
