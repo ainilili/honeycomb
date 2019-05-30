@@ -26,7 +26,7 @@ public class HoneycombDataSource extends HoneycombWrapperDatasource{
     @Override
     public Connection getConnection() throws SQLException {
         try {
-            //初始化
+        	//初始化连接池
             init();
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
@@ -34,19 +34,26 @@ public class HoneycombDataSource extends HoneycombWrapperDatasource{
         
         HoneycombConnection cn = null;
         Integer index = null;
+        
         if(pool.assignable()) {
+        	//空闲池可分配，从空闲池取出
             cn = pool.getIdleConnection();
         }else if(pool.actionable()) {
+        	//回收池可分配，从回收池取出
             cn = pool.getFreezeConnection();
         }else if((index =  pool.applyIndex()) != null) {
+        	//如果连接数未满，创建新的物理连接
             cn = pool.putOccupiedConnection(createNativeConnection(pool), index);
         }
         
         if(cn == null) {
+        	//如果无法获取连接，阻塞等待空闲池连接
             cn = pool.getIdleConnection();
-        }else if(cn.isClosedActive()) {
+        }
+        
+        if(cn.isClosedActive()) {
+        	//如果物理连接关闭，则获取新的连接
             cn.setConnection(super.getConnection());
-            return cn;
         }
         return cn;
     }

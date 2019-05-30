@@ -53,11 +53,15 @@ public class HoneycombConnectionPool implements FeatureTrigger{
     
     public HoneycombConnection getIdleConnection() {
         try {
+        	//获取最大等待时间
             long waitTime = config.getMaxWaitTime();
             while(waitTime > 0) {
                 long beginPollNanoTime = System.nanoTime();
+                
+                //设置超时时间，阻塞等待其他连接的释放
                 HoneycombConnection nc = idleQueue.poll(waitTime, TimeUnit.MILLISECONDS);
                 if(nc != null) {
+                	//状态转换
                     if(nc.isClosed() && nc.switchOccupied() && working(nc)) {
                         return nc;
                     }else {
@@ -66,6 +70,8 @@ public class HoneycombConnectionPool implements FeatureTrigger{
                     }
                 }
                 long timeConsuming = (System.nanoTime() - beginPollNanoTime) / (1000 * 1000);
+                
+                //也许在超时时间内获取到了连接，但是状态转换失败，此时刷新超时时间
                 waitTime -= timeConsuming;
             }
         } catch (Exception e) {
