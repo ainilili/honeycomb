@@ -60,6 +60,9 @@ public class HoneycombConnectionPool implements FeatureTrigger{
                 if(nc != null) {
                     if(nc.isClosed() && nc.switchOccupied() && working(nc)) {
                         return nc;
+                    }else {
+                        nc.switchIdle();
+                        idleQueue.addLast(nc);
                     }
                 }
                 long timeConsuming = (System.nanoTime() - beginPollNanoTime) / (1000 * 1000);
@@ -97,9 +100,11 @@ public class HoneycombConnectionPool implements FeatureTrigger{
     }
 
     public boolean recycle(HoneycombConnection nc) {
-        workQueue.remove(nc);
-        idleQueue.addFirst(nc);
-        return true;
+        if(workQueue.remove(nc)) {
+            idleQueue.addFirst(nc);
+            return true;
+        }
+        return false;
     }
     
     public boolean working(HoneycombConnection nc) {
@@ -107,7 +112,7 @@ public class HoneycombConnectionPool implements FeatureTrigger{
     }
     
     public boolean freeze(HoneycombConnection nc) {
-        return freezeQueue.add(nc) && idleQueue.remove(nc);
+        return idleQueue.remove(nc) && freezeQueue.add(nc);
     }
 
     public HoneycombConnection[] getPools() {

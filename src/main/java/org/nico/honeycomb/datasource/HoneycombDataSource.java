@@ -26,6 +26,7 @@ public class HoneycombDataSource extends HoneycombWrapperDatasource{
     @Override
     public Connection getConnection() throws SQLException {
         try {
+            //初始化
             init();
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);

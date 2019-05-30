@@ -30,8 +30,9 @@ public class CleanerFeature extends AbstractFeature{
                             idleQueue.stream().filter(c -> { return c.idleTime() > pool.getConfig().getMaxIdleTime(); }).forEach(c -> {
                                 try {
                                     if(! c.isClosedActive() && c.idle()) {
-                                        c.closeActive();
-                                        pool.freeze(c);
+                                        if(pool.freeze(c)) {
+                                            c.closeActive();
+                                        }
                                     }
                                 } catch (SQLException e) {
                                     e.printStackTrace();
