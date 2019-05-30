@@ -28,14 +28,19 @@ public class NicoPoolTests {
         dataSource.setUser("root");
         dataSource.setPassword("root");
         dataSource.setDriver("com.mysql.cj.jdbc.Driver");
-        dataSource.setMaxPoolSize(50);
-        dataSource.setInitialPoolSize(10);
+        dataSource.setMaxPoolSize(10);
+        dataSource.setInitialPoolSize(2);
         dataSource.setMinPoolSize(10);
         dataSource.setMaxWaitTime(60 * 1000);
         dataSource.setMaxIdleTime(10 * 1000);
         dataSource.addFeature(new CleanerFeature(true, 5 * 1000));
         
-        test(dataSource, 10000);
+//        test(dataSource, 10000);
+        test(dataSource);
+        
+        System.out.println(dataSource.getPool().getWorkQueue().size());
+        System.out.println(dataSource.getPool().getIdleQueue().size());
+        System.out.println(dataSource.getPool().getFreezeQueue().size());
         System.out.println(System.currentTimeMillis() - start + " ms");
     }
     
@@ -60,6 +65,23 @@ public class NicoPoolTests {
     
     public static void test(DataSource dataSource) throws SQLException, InterruptedException {
         Random random = new Random();
+        
+        HoneycombDataSource honeycombDataSource = (HoneycombDataSource) dataSource;
+        new Thread() {
+            @Override
+            public void run() {
+                while(true) {
+                    try {
+                        Thread.sleep(5000);   
+                    }catch(Exception e) {}
+                    System.out.println("work: " + honeycombDataSource.getPool().getWorkQueue().size());
+                    System.out.println("idle: " + honeycombDataSource.getPool().getIdleQueue().size());
+                    System.out.println("free: " + honeycombDataSource.getPool().getFreezeQueue().size());
+                    System.out.println("######################## \r\n");
+                }
+            }
+        }.start();
+        
         while(true) {
             try {
                 Thread.sleep(random.nextInt(10) + 10);   
